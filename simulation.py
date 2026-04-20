@@ -44,6 +44,8 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             'dz_max': 0.20,
             'd_ax': 1.00,
             'd_ay': 0.40,
+            'foot_half_length': 0.125, # Aggiunto: l'effettiva mezza lunghezza del piede HRP4 (25cm totali)
+            'foot_half_width': 0.065,  # Aggiunto: metà larghezza del piede
         }
         self.params['eta'] = np.sqrt(self.params['g'] / self.params['h'])
 
@@ -93,13 +95,15 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         self.id = id.InverseDynamics(self.hrp4, redundant_dofs)
 
         # initialize footstep planner
-        # walk straight, step up onto a 10cm stair, continue walking on top
-        reference = ([(0.09, 0., 0.)] * 10
-                    + [(0.2, 0., 0., 0.1, 0.72)]
-                    + [(0.2, 0., 0., 0.0, 0.52)] * 6
-                    + [(0.2, 0., 0., 0.0, 0.72)] * 4
-                    + [(0.1, 0., 0.)] * 4
-                     )
+        reference = ([(0.10, 0., 0.)] * 4
+                + [(0.01, 0., 0.)]
+                + [(0.3, 0., 0., 0.1, 0.42)]
+                + [(0.10, 0., 0., 0.0, 0.22)] * 6
+                + [(0.15, 0., 0., 0.0, 0.22)]
+                + [(0.33, 0., 0., -0.1, 0.1)]
+                + [(0.15, 0., 0.)] * 3
+                + [(0.0, 0., 0.)])       
+            
         self.footstep_planner = footstep_planner.FootstepPlanner(
             reference,
             self.initial['lfoot']['pos'],
@@ -296,7 +300,7 @@ if __name__ == "__main__":
 
     # create world node and add it to viewer
     viewer = dart.gui.osg.Viewer()
-    node.setTargetRealTimeFactor(10) # speed up the visualization by 10x
+    node.setTargetRealTimeFactor(40) # speed up the visualization by 40x
     viewer.addWorldNode(node)
 
     #viewer.setUpViewInWindow(0, 0, 1920, 1080)
