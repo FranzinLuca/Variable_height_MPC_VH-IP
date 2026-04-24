@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 
 class Logger():
     def __init__(self, initial):
@@ -36,11 +37,28 @@ class Logger():
         plot_num = np.max([item['axis'] for item in self.plot_info]) + 1
         self.fig, self.ax = plt.subplots(plot_num, 1, figsize=(6, 8))
 
+        labels = ['x-pos [m]', 'y-pos [m]', 'z-pos [m]']
+        for i in range(plot_num):
+            self.ax[i].set_ylabel(labels[i])
+            self.ax[i].grid(True)
+        self.ax[-1].set_xlabel('time [steps]')
+        self.fig.suptitle('real-time CoM and ZMP tracking', fontsize=14)
+
         self.lines = {}
         for item in self.plot_info:
             key = item['batch'], item['item'], item['level'], item['dim']
             self.lines[key], = self.ax[item['axis']].plot([], [], color=item['color'], linestyle=item['style'])
         
+        #self.ax[0].legend(['desired CoM', 'current CoM', 'desired ZMP', 'current ZMP'], loc='upper right', fontsize='small')
+        legend_elems = [
+            Line2D([0], [0], color='blue', linestyle='-', label='CoM Desired'),
+            Line2D([0], [0], color='blue', linestyle='--', label='CoM Current'),
+            Line2D([0], [0], color='green', linestyle='-', label='ZMP Desired'),
+            Line2D([0], [0], color='green', linestyle='--', label='ZMP Current')
+        ]
+        self.fig.legend(handles=legend_elems, loc='upper center', bbox_to_anchor=(0.5, 0.95), ncol=4, fontsize='small', frameon=False)
+        self.fig.subplots_adjust(top=0.88)
+
         plt.ion()
         plt.show()
 
