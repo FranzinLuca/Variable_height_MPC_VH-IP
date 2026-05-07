@@ -13,8 +13,9 @@ import foot_trajectory_generator as ftg
 from logger import Logger
 
 class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
-    def __init__(self, world, hrp4):
+    def __init__(self, world, hrp4, trajectory):
         super(Hrp4Controller, self).__init__(world)
+        self.trajectory = trajectory
         self.world = world
         self.hrp4 = hrp4
         self.time = 0
@@ -35,7 +36,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             'N': 100,
             'P': 200,
             'dof': self.hrp4.getNumDofs(),
-            'alpha_z': 10,
+            'alpha_z': 1,
             'beta_z': 10,
             'fs_min': 114.0,
             'alpha_xy': 1,
@@ -95,43 +96,42 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         self.id = id.InverseDynamics(self.hrp4, redundant_dofs)
 
         # initialize footstep planner
-        # avoids the obstacle and walks on the box
-        reference = ([(0.10, 0., 0.)] * 2
-                     + [(0.15, 0., 0., 0.0, 0.72)] * 2
-                     + [(0.15, 0., 0., 0.0, 0.35)] * 4
-                     + [(0.15, 0., 0.)] * 6
-                     + [(0.3, 0., 0., 0.1, 0.75)]
-                     + [(0.05, 0., 0.)]
-                     + [(0.13, 0., 0.)] * 4
-                     + [(0.1, 0., 0., 0.0, 0.20)]
-                     + [(0.1, 0., 0.)]
-                     + [(0.35, 0., 0., -0.1, 0.7)]
-                     + [(0.1, 0., 0.)]
-                     + [(0.15, 0., 0.)] * 3
-                     )
-        '''
+        if self.trajectory == "obstacles":
+            # avoids the obstacle and walks on the box
+            reference = ([(0.10, 0., 0.)] * 2
+                         + [(0.15, 0., 0., 0.0, 0.72)] * 2
+                         + [(0.15, 0., 0., 0.0, 0.5)] * 4
+                         + [(0.15, 0., 0.)] * 5
+                         + [(0.15, 0., 0., 0., 0.5)]
+                         + [(0.3, 0., 0., 0.1, 0.7)]
+                         + [(0.05, 0., 0.)]
+                         + [(0.13, 0., 0.)] * 4
+                         + [(0.1, 0., 0., 0.0, 0.5)]
+                         + [(0.1, 0., 0.)]
+                         + [(0.35, 0., 0., -0.1, 0.65)]
+                         + [(0.1, 0., 0.)]
+                         + [(0.15, 0., 0.)] * 3
+                         )
+        elif self.trajectory == "stairs":
+            # up and down the stairs
+            reference = ([(0.10, 0., 0.)] * 2
+                         + [(0.15, 0., 0., 0.0, 0.72)] * 3
+                         + [(0.3, 0., 0., 0.15, 0.85)]
+                         + [(0.0, 0., 0., 0., 0.85)]
+                         + [(0.1, 0., 0., 0., 0.85)]
+                         + [(0.3, 0., 0., 0.15, 0.9)]
+                         + [(0.05, 0., 0., 0., 0.9)]
+                         + [(0.15, 0., 0., 0., 0.8)] * 2
+                         + [(0.15, 0., 0., 0., 0.6)]
+                         + [(0.0, 0., 0., 0., 0.4)]
+                         + [(0.32, 0., 0., -0.15, 0.4)]
+                         + [(0.1, 0., 0., 0., 0.4)]
+                         + [(0.3, 0., 0., -0.15, 0.55)]
+                         + [(0.15, 0., 0., 0., 0.72)] * 5
+                         )
+        else:
+            reference = []
 
-        # up and down the stairs
-        reference = ([(0.10, 0., 0.)] * 2
-                     + [(0.1, 0., 0.)] * 3
-                     + [(0.3, 0., 0., 0.15, 1.02)]
-                     + [(0.0, 0., 0., 0., 1.02)]
-                     + [(0.1, 0., 0., 0., 0.8)]
-                     + [(0.0, 0., 0., 0., 0.7)]
-                     + [(0.3, 0., 0., 0.15, 0.7)]
-                     + [(0.0, 0., 0., 0., 0.8)]
-                     + [(0.1, 0., 0., 0., 0.7)]
-                     + [(0.1, 0., 0., 0.0, 0.5)] * 4
-                     + [(0.32, 0., 0., -0.15, 0.5)]
-                     + [(0.0, 0., 0., 0., 0.5)]
-                     + [(0.1, 0., 0., 0., 0.4)]
-                     + [(0.0, 0., 0., 0., 0.4)]
-                     + [(0.3, 0., 0., -0.15, 0.4)]
-                     + [(0.0, 0., 0., 0., 0.9)]
-                     + [(0.1, 0., 0., 0., 0.8)] * 3
-                     + [(0.1, 0., 0.)]
-                     )
-'''
 
         self.footstep_planner = footstep_planner.FootstepPlanner(
             reference,
@@ -161,7 +161,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         d[7] = - self.params['world_time_step'] * self.params['g']
         H = np.identity(3)
         Q = block_diag(1., 1., 1.)
-        R = block_diag(1e1, 1e2, 1e4)
+        R = block_diag(1e2, 1e2, 1e4)
         P = np.identity(3)
         x = np.array([self.initial['com']['pos'][0], self.initial['com']['vel'][0], self.initial['zmp']['pos'][0], \
                       self.initial['com']['pos'][1], self.initial['com']['vel'][1], self.initial['zmp']['pos'][1], \
@@ -316,7 +316,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             zmp = np.array([0., 0., 0.]) # FIXME: this should return previous measurement
         else:
             # sometimes we get contact points that dont make sense, so we clip the ZMP close to the robot
-            midpoint = (l_foot_position + l_foot_position) / 2.
+            midpoint = (l_foot_position + r_foot_position) / 2.
             zmp[0] = np.clip(zmp[0], midpoint[0] - 0.3, midpoint[0] + 0.3)
             zmp[1] = np.clip(zmp[1], midpoint[1] - 0.3, midpoint[1] + 0.3)
             zmp[2] = np.clip(zmp[2], midpoint[2] - 0.3, midpoint[2] + 0.3)
@@ -347,20 +347,25 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         }
 
 if __name__ == "__main__":
+    TRAJECTORY = "obstacles" # "stairs" or "obstacles"
     world = dart.simulation.World()
 
     urdfParser = dart.utils.DartLoader()
     current_dir = os.path.dirname(os.path.abspath(__file__))
     hrp4   = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "hrp4.urdf"))
     ground = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "ground.urdf"))
-    box = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "box.urdf"))
-    obstacle = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "obstacle.urdf"))
-    # stair  = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "stair.urdf"))
     world.addSkeleton(hrp4)
     world.addSkeleton(ground)
-    world.addSkeleton(box)
-    world.addSkeleton(obstacle)
-    #world.addSkeleton(stair)
+
+    if TRAJECTORY == "stairs":
+        stair = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "stair.urdf"))
+        world.addSkeleton(stair)
+    elif TRAJECTORY == "obstacles":
+        box = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "box.urdf"))
+        obstacle = urdfParser.parseSkeleton(os.path.join(current_dir, "urdf", "obstacle.urdf"))
+        world.addSkeleton(box)
+        world.addSkeleton(obstacle)
+
     world.setGravity([0, 0, -9.81])
     world.setTimeStep(0.01)
 
@@ -371,7 +376,7 @@ if __name__ == "__main__":
             body.setMass(1e-8)
             body.setInertia(default_inertia)
 
-    node = Hrp4Controller(world, hrp4)
+    node = Hrp4Controller(world, hrp4, trajectory=TRAJECTORY)
 
     # create world node and add it to viewer
     viewer = dart.gui.osg.Viewer()
