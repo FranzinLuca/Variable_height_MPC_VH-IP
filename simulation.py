@@ -45,8 +45,8 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             'dz_max': 0.20,
             'd_ax': 1.00,
             'd_ay': 0.40,
-            'foot_half_length': 0.125, # Aggiunto: l'effettiva mezza lunghezza del piede HRP4 (25cm totali)
-            'foot_half_width': 0.065,  # Aggiunto: metà larghezza del piede
+            'foot_half_length': 0.125,
+            'foot_half_width': 0.065,
         }
         self.params['eta'] = np.sqrt(self.params['g'] / self.params['h'])
 
@@ -102,14 +102,14 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
                          + [(0.15, 0., 0., 0.0, 0.72)] * 2
                          + [(0.15, 0., 0., 0.0, 0.5)] * 4
                          + [(0.15, 0., 0.)] * 5
-                         + [(0.15, 0., 0., 0., 0.5)]
-                         + [(0.3, 0., 0., 0.1, 0.7)]
+                         + [(0.15, 0., 0., 0., 0.45)]
+                         + [(0.32, 0., 0., 0.1, 0.5)]
                          + [(0.05, 0., 0.)]
-                         + [(0.13, 0., 0.)] * 4
+                         + [(0.15, 0., 0.)] * 3
                          + [(0.1, 0., 0., 0.0, 0.5)]
-                         + [(0.1, 0., 0.)]
-                         + [(0.35, 0., 0., -0.1, 0.65)]
-                         + [(0.1, 0., 0.)]
+                         + [(0.1, 0., 0., 0.0, 0.45)]
+                         + [(0.35, 0., 0., -0.1, 0.5)]
+                         + [(0.1, 0., 0., 0., 0.65)]
                          + [(0.15, 0., 0.)] * 3
                          )
         elif self.trajectory == "stairs":
@@ -120,14 +120,14 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
                          + [(0.0, 0., 0., 0., 0.85)]
                          + [(0.1, 0., 0., 0., 0.85)]
                          + [(0.3, 0., 0., 0.15, 0.9)]
-                         + [(0.05, 0., 0., 0., 0.9)]
-                         + [(0.15, 0., 0., 0., 0.8)] * 2
+                         + [(0.05, 0., 0., 0., 0.6)]
+                         + [(0.15, 0., 0., 0., 0.6)] * 2
                          + [(0.15, 0., 0., 0., 0.6)]
-                         + [(0.0, 0., 0., 0., 0.4)]
-                         + [(0.32, 0., 0., -0.15, 0.4)]
-                         + [(0.1, 0., 0., 0., 0.4)]
-                         + [(0.3, 0., 0., -0.15, 0.55)]
-                         + [(0.15, 0., 0., 0., 0.72)] * 5
+                         + [(0.0, 0., 0., 0., 0.6)]
+                         + [(0.3, 0., 0., -0.15, 0.5)]
+                         + [(0.05, 0., 0., 0., 0.56)] * 2
+                         + [(0.3, 0., 0., -0.15, 0.65)]
+                         + [(0.1, 0., 0., 0., 0.72)] * 4
                          )
         else:
             reference = []
@@ -139,6 +139,9 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             self.initial['rfoot']['pos'],
             self.params
             )
+
+        # draw footprints in the sim
+        self.draw_footprints()
 
         # initialize MPC controller
         self.mpc = ismpc.Ismpc(
@@ -239,6 +242,9 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         # get references using mpc
         lip_state, contact = self.mpc.solve(self.current, self.time)
 
+        # draw adapted footsteps in sim
+        self.update_footprints()
+
         self.desired['com']['pos'] = lip_state['com']['pos']
         self.desired['com']['vel'] = lip_state['com']['vel']
         self.desired['com']['acc'] = lip_state['com']['acc']
@@ -272,8 +278,13 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         # dynamic camera
         if hasattr(self, 'viewer'):
             com = self.hrp4.getCOM()
-            eye_pos = [com[0] + 4.5, com[1] - 3.5, com[2] + 0.2]
-            target_pos = [com[0] - 1.0, com[1] + 1.5, com[2] + 0.2]
+            if self.trajectory == "stairs":
+                eye_pos = [com[0] + 2.5, com[1] - 3.5, com[2] + 1.5]
+                target_pos = [com[0] + 0.8, com[1] - 0.5, com[2]]
+            else:
+                eye_pos = [com[0] + 4.5, com[1] - 3.5, com[2] + 0.2]
+                target_pos = [com[0] - 1.0, com[1] + 1.5, com[2] + 0.2]
+
             self.viewer.setCameraHomePosition(eye_pos, target_pos, [0., 0., 1.])
 
     def retrieve_state(self):
@@ -346,8 +357,58 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
                       'acc': np.zeros(3)}
         }
 
+    def draw_footprints(self):
+        # candidate footsteps
+        for i, step in enumerate(self.footstep_planner.plan):
+            skel = dart.dynamics.Skeleton(f"footprint_{i}")
+            joint, body = skel.createWeldJointAndBodyNodePair()
+            shape = dart.dynamics.BoxShape([0.25, 0.13, 0.01])
+            shape_node = body.createShapeNode(shape)
+
+            if hasattr(shape_node, 'createVisualAspect'):
+                visual = shape_node.createVisualAspect()
+                visual.setColor([1.0, 0.0, 0.0, 0.6])
+
+            tf = dart.math.Isometry3()
+            rot = dart.math.AngleAxis(step['ang'][2], [0, 0, 1]).to_rotation_matrix()
+            tf.set_rotation(rot)
+            tf.set_translation([step['pos'][0], step['pos'][1], step['pos'][2] + 0.005])
+            joint.setTransformFromParentBodyNode(tf)
+            self.world.addSkeleton(skel)
+
+        # adapted footsteps
+        self.mpc_footprints = []
+        for i in range(self.params['f_max']):
+            skel = dart.dynamics.Skeleton(f"mpc_footprint_{i}")
+            joint, body = skel.createWeldJointAndBodyNodePair()
+            shape = dart.dynamics.BoxShape([0.25, 0.13, 0.012])
+            shape_node = body.createShapeNode(shape)
+
+            if hasattr(shape_node, 'createVisualAspect'):
+                visual = shape_node.createVisualAspect()
+                visual.setColor([0.0, 1.0, 0.0, 0.8])  # Verde acceso
+
+            tf = dart.math.Isometry3()
+            tf.set_translation([0, 0, -1.0])
+            joint.setTransformFromParentBodyNode(tf)
+            self.world.addSkeleton(skel)
+            self.mpc_footprints.append(joint)
+
+    def update_footprints(self):
+        idx = self.footstep_planner.get_step_index_at_time(self.time)
+        if idx is not None and hasattr(self.mpc, 'x_f_opt'):
+            for i in range(self.params['f_max']):
+                step_idx = min(idx + i, len(self.footstep_planner.plan) - 1)
+                z_target = self.footstep_planner.plan[step_idx]['pos'][2]
+                yaw_target = self.footstep_planner.plan[step_idx]['ang'][2]
+                tf = dart.math.Isometry3()
+                rot = dart.math.AngleAxis(yaw_target, [0, 0, 1]).to_rotation_matrix()
+                tf.set_rotation(rot)
+                tf.set_translation([self.mpc.x_f_opt[i], self.mpc.y_f_opt[i], z_target + 0.006])
+                self.mpc_footprints[i].setTransformFromParentBodyNode(tf)
+
 if __name__ == "__main__":
-    TRAJECTORY = "obstacles" # "stairs" or "obstacles"
+    TRAJECTORY = "stairs" # "stairs" or "obstacles"
     world = dart.simulation.World()
 
     urdfParser = dart.utils.DartLoader()

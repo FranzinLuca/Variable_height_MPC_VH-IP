@@ -369,6 +369,15 @@ class Ismpc:
 
     x_f_opt = sol_xy.value(self.x_f)
     y_f_opt = sol_xy.value(self.y_f)
+
+    # update footstep positions
+    self.x_f_opt = x_f_opt
+    self.y_f_opt = y_f_opt
+    for i in range(2, self.f_max):
+        step_idx = min(idx + i, len(self.footstep_planner.plan) - 1)
+        self.footstep_planner.plan[step_idx]['pos'][0] = x_f_opt[i]
+        self.footstep_planner.plan[step_idx]['pos'][1] = y_f_opt[i]
+
     self.opt_xy.set_initial(self.x_c, x_c_opt)
     self.opt_xy.set_initial(self.y_c, y_c_opt)
     self.opt_xy.set_initial(self.x_z, x_z_opt)
@@ -448,11 +457,13 @@ class Ismpc:
             d_ay[i] = 1e5
         else:
             # Minkowski patch
-            margin = self.foot_size / 2
-            p_min_x[i] = x_cf[i] - 0.1 + margin
-            p_max_x[i] = x_cf[i] + 0.1 - margin
-            p_min_y[i] = y_cf[i] - 0.1 + margin
-            p_max_y[i] = y_cf[i] + 0.1 - margin
+            margin_x = self.params['foot_half_length']
+            margin_y = self.params['foot_half_width']
+
+            p_min_x[i] = step['patch_x_min'] + margin_x
+            p_max_x[i] = step['patch_x_max'] - margin_x
+            p_min_y[i] = step['patch_y_min'] + margin_y
+            p_max_y[i] = step['patch_y_max'] - margin_y
 
             dz = abs(step['pos'][2] - prev_step['pos'][2])
             scaling = (1 - sigma * (dz / dz_max))

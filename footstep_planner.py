@@ -53,6 +53,9 @@ class FootstepPlanner:
                 current_z))
             ang = np.array((0., 0., unicycle_theta))
 
+            # compute patches and adjust footstep trajectory
+            xmin, xmax, ymin, ymax = self.get_patch(pos[0], pos[1], pos[2])
+
             # add step to plan
             self.plan.append({
                 'pos'        : pos,
@@ -60,7 +63,11 @@ class FootstepPlanner:
                 'ss_duration': ss_duration,
                 'ds_duration': ds_duration,
                 'foot_id'    : support_foot,
-                'h_ref'      : h_ref
+                'h_ref'      : h_ref,
+                'patch_x_min': xmin,
+                'patch_x_max': xmax,
+                'patch_y_min': ymin,
+                'patch_y_max': ymax
             })
 
             # switch support foot
@@ -87,3 +94,33 @@ class FootstepPlanner:
             return 'ss'
         else:
             return 'ds'
+
+    def get_patch(self, x, y, z):
+        # default values for flat ground
+        if z < 0.05:
+            if x > 2.0:
+                return 2.3, 5.00, -1.0, 1.0
+
+            return -1e5, 1e5, -1e5, 1e5
+
+        # obstacles trajectory
+        if abs(z - 0.10) < 0.0005:
+            # box (Z=0.10, X=2.0 up to 3.0)
+            return 2.00, 3.00, -1.0, 1.0
+
+        # stairs trajectory
+        if abs(z - 0.15) < 0.0005:
+            if x < 1.0:
+                # first step (Z=0.15, X=0.6 up to 1.0)
+                return 0.60, 1.00, -1.0, 1.0
+            else:
+                # third step (Z=0.15, X=1.8 up to 2.2)
+                return 1.87, 2.2, -1.0, 1.0
+
+        if abs(z - 0.30) < 0.0005:
+            # second step (Z=0.30, X=1.0 up to 1.8)
+            return 1.00, 1.80, -1.0, 1.0
+
+
+        # fallback
+        return x - 0.1, x + 0.1, y - 0.1, y + 0.1
