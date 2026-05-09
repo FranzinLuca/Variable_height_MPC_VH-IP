@@ -158,8 +158,9 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
             )
 
         # initialize kalman filter
-        A = np.identity(3) + self.params['world_time_step'] * self.mpc.A_lip
-        B = self.params['world_time_step'] * self.mpc.B_lip
+        A_xy = self.mpc.A_xy_vhip
+        A_z = self.mpc.A_z_vhip
+        B = self.mpc.B_vhip
         d = np.zeros(9)
         d[7] = - self.params['world_time_step'] * self.params['g']
         H = np.identity(3)
@@ -169,7 +170,7 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         x = np.array([self.initial['com']['pos'][0], self.initial['com']['vel'][0], self.initial['zmp']['pos'][0], \
                       self.initial['com']['pos'][1], self.initial['com']['vel'][1], self.initial['zmp']['pos'][1], \
                       self.initial['com']['pos'][2], self.initial['com']['vel'][2], self.initial['zmp']['pos'][2]])
-        self.kf = filter.KalmanFilter(block_diag(A, A, A), \
+        self.kf = filter.KalmanFilter(block_diag(A_xy, A_xy, A_z), \
                                       block_diag(B, B, B), \
                                       d, \
                                       block_diag(H, H, H), \
@@ -198,32 +199,17 @@ class Hrp4Controller(dart.gui.osg.RealTimeWorldNode):
         lambda_val = max(lambda_val, 1e-4)
 
         # compute matrices and drift
-        A_xy = np.array([
-            [1.0, delta, 0.0],
-            [delta * lambda_val, 1.0, -delta * lambda_val],
-            [0.0, 0.0, 1.0]
-        ])
-
-        A_z = np.array([
-            [1.0, delta, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0]
-        ])
-
-        B_axis = np.array([
-            [0.0],
-            [0.0],
-            [delta]
-        ])
-
+        A_xy = self.mpc.A_xy_vhip.copy()
+        A_xy[1, 0] = lambda_val * delta
+        A_xy[1, 2] = - lambda_val * delta
+        A_z = self.mpc.A_z_vhip.copy()
         A_tv = block_diag(A_xy, A_xy, A_z)
-        B_tv = block_diag(B_axis, B_axis, B_axis)
         d_tv = np.zeros(9)
         d_tv[7] = delta * ddot_z
 
         # update kalman filter
         u = np.array([self.desired['zmp']['vel'][0], self.desired['zmp']['vel'][1], self.desired['zmp']['vel'][2]])
-        self.kf.predict(u, A=A_tv, B=B_tv, d=d_tv)
+        self.kf.predict(u, A=A_tv, d=d_tv)
         x_flt, _ = self.kf.update(np.array([self.current['com']['pos'][0], self.current['com']['vel'][0], self.current['zmp']['pos'][0], \
                                             self.current['com']['pos'][1], self.current['com']['vel'][1], self.current['zmp']['pos'][1], \
                                             self.current['com']['pos'][2], self.current['com']['vel'][2], self.current['zmp']['pos'][2]]))

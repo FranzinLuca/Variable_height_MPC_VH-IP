@@ -15,16 +15,10 @@ class Ismpc:
     self.sigma = lambda t, t0, t1: np.clip((t - t0) / (t1 - t0), 0, 1) # piecewise linear sigmoidal function
     self.mass = params['mass']
 
-    # lip model matrices
-    self.A_lip = np.array([[0, 1, 0], [self.eta**2, 0, -self.eta**2], [0, 0, 0]])
-    self.B_lip = np.array([[0], [0], [1]])
-
-    # dynamics
-    self.f = lambda x, u: cs.vertcat(
-      self.A_lip @ x[0:3] + self.B_lip @ u[0],
-      self.A_lip @ x[3:6] + self.B_lip @ u[1],
-      self.A_lip @ x[6:9] + self.B_lip @ u[2] + np.array([0, - params['g'], 0]),
-    )
+    # vh-ip model matrices
+    self.A_xy_vhip = np.array([[1, self.delta, 0], [self.eta ** 2 * self.delta, 1, -self.eta ** 2 * self.delta], [0, 0, 1]])
+    self.A_z_vhip = np.array([[1, self.delta, 0], [0, 1, 0], [0, 0, 1]])
+    self.B_vhip = np.array([[0], [0], [self.delta]])
 
     # optimization problem
     self._setup_qp_z()
