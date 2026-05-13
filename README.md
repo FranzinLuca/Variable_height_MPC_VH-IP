@@ -1,15 +1,18 @@
+# Variable-height MPC using the VH-IP model
+### D'Addario Giuseppe 2177530, Tranzocchi Federico 1891909, Franzin Luca 1886634, Gravili Andrea 2180997
+
+---
 # Description
-This is IS-MPC, a framework for humanoid gait generation.
+This is IS-MPC, a framework for humanoid gait generation, extended to work with variable height of the CoM (VH-IP model).
 
 The main reference is:<br />
-[N. Scianca, D. De Simone, L. Lanari, G. Oriolo, "MPC for Humanoid Gait Generation: Stability and Feasibility"](https://ieeexplore.ieee.org/document/8955951)<br />
-*Transactions on Robotics*, 2020
+[F. M. Smaldone, N. Scianca, L. Lanari, and G. Oriolo, “From walking to running: 3d
+humanoid gait generation via mpc”](https://www.frontiersin.org/journals/robotics-and-ai/articles/10.3389/frobt.2022.876613/full), Frontiers in Robotics and AI, vol. 9, p. 876 613, 2022.
 
-The extension available in this repository uses the 3D LIP and can also generate vertical motions. Main reference:<br />
-[M. Cipriano, P. Ferrari, N. Scianca, L. Lanari, G. Oriolo, "Humanoid motion generation in a world of stairs"](https://www.sciencedirect.com/science/article/pii/S0921889023001343)<br />
-*Robotics and Autonomous Systems*, 2023
+The implementation is an extension of the original code:<br />
+DIAG Robotics Lab, Intrinsically Stable Model Predictive Control (IS-MPC), [GitHub](https://github.com/DIAG-Robotics-Lab/)
 
-
+---
 # Setup
 You need a Python installation and some dependencis. If using pip, you can run the following
 ```
@@ -22,3 +25,7 @@ To run the simulation
 python simulation.py
 ```
 then press spacebar to start it
+
+---
+# Report & presentation
+The report explaining in detail the project is available [here](report.pdf). It is also available a canva presentation [here](https://canva.link/47w3jj0gx0jxxgt).
