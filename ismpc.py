@@ -368,9 +368,10 @@ class Ismpc:
     self.x_f_opt = x_f_opt
     self.y_f_opt = y_f_opt
     for i in range(2, self.f_max):
-        step_idx = min(idx + i, len(self.footstep_planner.plan) - 1)
-        self.footstep_planner.plan[step_idx]['pos'][0] = x_f_opt[i]
-        self.footstep_planner.plan[step_idx]['pos'][1] = y_f_opt[i]
+        target_idx = idx + i
+        if target_idx < len(self.footstep_planner.plan):
+            self.footstep_planner.plan[target_idx]['pos'][0] = x_f_opt[i]
+            self.footstep_planner.plan[target_idx]['pos'][1] = y_f_opt[i]
 
     self.opt_xy.set_initial(self.x_c, x_c_opt)
     self.opt_xy.set_initial(self.y_c, y_c_opt)
