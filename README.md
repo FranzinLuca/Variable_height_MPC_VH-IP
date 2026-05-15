@@ -1,5 +1,5 @@
 # Variable-height MPC using the VH-IP model
-### D'Addario Giuseppe 2177530, Tranzocchi Federico 1891909, Franzin Luca 1886634, Gravili Andrea 2180997
+### D'Addario Giuseppe, Tranzocchi Federico, Franzin Luca, Gravili Andrea
 
 ---
 # Description
